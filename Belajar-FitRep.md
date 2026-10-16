@@ -695,23 +695,24 @@ Rep juga **langsung SALAH tanpa melihat tebakan model** bila geometri mendeteksi
 
 ## 9. Rekayasa iOS
 
-### Slide 11 dalam bahasa mudah ("Swift 6 Pipeline, Zero Per-Frame Hops")
-Slide 11 menjawab: **bagaimana 30 gambar per detik diproses tanpa macet, dan kodenya tetap aman?**
+### Slide 11 dalam bahasa mudah ("30 Frames a Second, Without Freezing the Screen")
+Slide 11 menjawab: **bagaimana 30 gambar per detik diproses tanpa macet, dan kodenya tetap aman?** Sejak 16 Okt 2026 teks slidenya memakai bahasa awam; judul lama "Swift 6 Pipeline, Zero Per-Frame Hops". Tabel padanan istilah lengkap ada di naskah bagian 08.
 
-- **Swift 6:** compiler memeriksa agar dua bagian program tidak mengubah data yang sama bersamaan (*data race*, penyebab crash acak). Diperiksa **sebelum** aplikasi jalan [13].
-- **Zero per-frame hops:** frame tidak dioper ke antrean lain lalu menunggu giliran; frame langsung diproses di antrean tempat kamera mengirimnya. Analogi: paket langsung diproses di meja tempat kurir meletakkannya.
-- **Lapisan = restoran:** SwiftUI views = ruang makan · ViewModel = **pelayan** (hanya menjalankan perintah: suara, timer, kamera) · WorkoutSession = **kepala dapur** (menerima kejadian → keadaan baru + daftar tugas) · Domain = **buku resep** (rumus sudut, pelacak rep) · Services = **peralatan dapur** (kamera, Vision, Core ML, audio).
-- **Pure reducer:** kejadian yang sama selalu menghasilkan keputusan yang sama → bisa diuji tanpa iPhone. Jujur: test otomatisnya **belum ada**.
+- **Swift 6 (subjudul: "Swift 6 rejects code where two tasks could change the same data at once"):** compiler memeriksa agar dua bagian program tidak mengubah data yang sama bersamaan (*data race*, penyebab crash acak). Diperiksa **sebelum** aplikasi jalan [13].
+- **"Analyzed where the camera delivers it" / No Handoffs per Frame** (dulu *zero per-frame hops*): frame tidak dioper ke antrean lain lalu menunggu giliran; frame langsung diproses di antrean tempat kamera mengirimnya. Analogi: paket langsung diproses di meja tempat kurir meletakkannya.
+- **Lapisan = restoran:** Screens (SwiftUI views) = ruang makan · Runner (ViewModel) = **pelayan** (hanya menjalankan perintah: suara, timer, kamera) · Decider (WorkoutSession) = **kepala dapur** (menerima kejadian → keadaan baru + daftar tugas) · Rules (Domain) = **buku resep** (rumus sudut, pelacak rep) · Tools (Services) = **peralatan dapur** (kamera, Vision, Core ML, audio).
+- **One Place Decides (pure reducer):** kejadian yang sama selalu menghasilkan keputusan yang sama → bisa diuji tanpa iPhone. Jujur: test otomatisnya **belum ada**.
 - **Tiga jalur kerja:**
-  - `sessionQueue`: menyalakan kamera; `startRunning()` menunggu kamera siap, jadi dipisah supaya layar tidak membeku.
-  - `frameQueue`: Vision + Core ML menganalisis setiap frame langsung di sini.
-  - `MainActor`: jalur layar; hasil tiap frame dikirim lewat AsyncStream (seperti ban berjalan).
+  - **Camera lane** (`sessionQueue`): menyalakan kamera; `startRunning()` menunggu kamera siap, jadi dipisah supaya layar tidak membeku.
+  - **Analysis lane** (`frameQueue`): Vision mencari sendi di setiap frame dan model Core ML menebak tiap 10 frame, langsung di sini.
+  - **Screen lane** (`MainActor`): jalur layar; hasil tiap frame dikirim lewat AsyncStream (seperti ban berjalan).
 - **Actor = ruangan berpintu satu:** hanya satu pekerjaan di dalamnya pada satu waktu → aman dari data race. Ruangan kamera dan pipeline ditaruh **di antrean kamera itu sendiri**, jadi frame masuk tanpa menunggu giliran (`assumeIsolated`).
-- **Render only on change:** preview kamera langsung ke layar (bukan SwiftUI), dan keadaan layar hanya diganti kalau berbeda (`if session.state != state`). Tanpa ini, layar bisa digambar ulang 30 kali per detik → boros baterai.
-- **1 documented @unchecked Sendable:** satu-satunya "percaya saja, ini aman" ke compiler, yaitu `ExerciseClassifier` (kelas model buatan Xcode). Aman karena propertinya tidak pernah berubah dan hanya dipanggil dari satu actor.
-- **Bila ditanya "benar-benar nol lompatan?":** nol saat frame **masuk** pipeline. Hasil tiap frame tetap dikirim sekali ke MainActor lewat AsyncStream, karena hanya MainActor yang boleh mengubah tampilan.
+- **Redraw Only on Change:** preview kamera langsung ke layar (bukan SwiftUI), dan keadaan layar hanya diganti kalau berbeda (`if session.state != state`). Tanpa ini, layar bisa digambar ulang 30 kali per detik → boros baterai.
+- **1 documented exception** (`@unchecked Sendable`): satu-satunya "percaya saja, ini aman" jenis ini ke compiler, yaitu `ExerciseClassifier` (kelas model buatan Xcode). Aman karena propertinya tidak pernah berubah dan hanya dipanggil dari satu actor. Ada juga 2 `nonisolated(unsafe)` yang terdokumentasi (lihat di bawah), jadi label chip ini masih perlu diputuskan.
+- **Bila ditanya "is there really no handoff?":** tidak ada perpindahan antrean saat frame **masuk** analisis. Hasil tiap frame tetap dikirim sekali ke MainActor lewat AsyncStream, karena hanya MainActor yang boleh mengubah tampilan.
+- **Bila ditanya "apakah ke-30 frame selalu dianalisis?":** kamera mengirim hingga 30 fps dan membuang frame yang terlambat. Waktu Vision per frame (target < 33 ms) **belum diukur** (L3), jadi jangan klaim semua frame pasti dianalisis.
 
-> Kalimat siap ucap: "Setiap frame diproses langsung di antrean yang sama tempat kamera mengirimnya, jadi tidak ada antrean tambahan per frame, dan Swift 6 tetap memeriksa data race. Keputusan latihan dipusatkan di satu reducer murni, dan layar hanya digambar ulang kalau keadaannya benar-benar berubah."
+> Kalimat siap ucap: "Tiga puluh frame masuk setiap detik. Setiap frame dianalisis langsung di jalur tempat kamera mengirimnya, jadi tidak menumpuk, dan hanya hasil ringkasnya yang dikirim ke layar. Semua keputusan latihan ada di satu tempat yang bisa diuji tanpa iPhone, dan Swift 6 menolak meng-compile kode yang memungkinkan dua tugas mengubah data yang sama bersamaan."
 
 Detail teknisnya ada di bawah.
 
@@ -1012,8 +1013,8 @@ J:
 - Frame masuk ke `frameQueue`, yang sekaligus menjadi executor actor `FramePipeline`. Vision dan Core ML berjalan sinkron di sana.
 - Main actor hanya menerima hasil ringkas (`FrameAnalysis`) lewat `AsyncStream`.
 
-**T-D4. Apa maksud "zero per-frame hops"?**
-J: Callback kamera sudah berada di antrean milik actor pipeline, jadi masuk ke isolasi actor bisa dilakukan sinkron dengan `assumeIsolated`. Tidak ada `await` atau perpindahan thread untuk setiap frame, tapi compiler Swift 6 tetap memeriksa data race.
+**T-D4. Apa maksud "analyzed where the camera delivers it" / "No Handoffs per Frame" (dulu "zero per-frame hops") di slide 11?**
+J: Callback kamera sudah berada di antrean milik actor pipeline, jadi masuk ke isolasi actor bisa dilakukan sinkron dengan `assumeIsolated`. Tidak ada `await` atau perpindahan thread untuk setiap frame saat masuk analisis, tapi compiler Swift 6 tetap memeriksa data race. Hasil tiap frame tetap dikirim sekali ke MainActor lewat AsyncStream.
 
 **T-D5. Kenapa ada `@unchecked Sendable`?**
 J: Hanya satu, di pembungkus model, karena kelas yang di-generate Xcode tidak Sendable. Aman karena semua propertinya immutable dan `predict` hanya dipanggil dari actor pipeline. Alasannya didokumentasikan di kode.

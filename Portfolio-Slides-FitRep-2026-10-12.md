@@ -36,7 +36,7 @@ Satu pesan per slide. Alurnya: masalah → solusi → proses & teknologi → has
 | 8 | 05 | Data Pipeline | Data: Balanced, Single-Rep, Side-View Clips | Data seimbang, satu rep per klip |
 | 9 | 06 | ML Methodology | Why Skeletons Beat Pixels Here | Pose = input ringkas dan privat |
 | 10 | 07 | The Hybrid Decision | Angle Rules Decide; AI Can Only Veto | Logika vonis 4 gate |
-| 11 | 08 | iOS System Architecture | Swift 6 Pipeline, Zero Per-Frame Hops | Rekayasa iOS tingkat produksi |
+| 11 | 08 | iOS System Architecture | 30 Frames a Second, Without Freezing the Screen | Rekayasa iOS tingkat produksi |
 | 12 | 09 | Robustness · Privacy · Inclusivity | Built for Messy Real-World Conditions | Robust, privat, inklusif |
 | 13 | 10 | Model Results | Strong Scores, One-Sided Errors | 94%, tetapi galat condong ke satu arah |
 | 14–15 | 10b | Create ML Evidence | Training & Validation in Create ML · Testing & Model Output | Bukti asli angka slide 13 — **dipindah dari lampiran (rev. 7.2)** |
@@ -430,18 +430,39 @@ Contoh: rep 2,5 detik, siku 160° → 60° → 160°, badan tegak. AI memberi 4 
 
 ### 08 · iOS System Architecture  *(deck 11)*
 **Tujuan:** rekayasa iOS tingkat produksi: concurrency, isolasi, disiplin rendering.
-- **Judul:** Swift 6 Pipeline, Zero Per-Frame Hops
-- **Subjudul:** MVVM + Services around a pure domain reducer, data-race-checked by the compiler [13].
-- **Lapisan:** Features (SwiftUI views) → WorkoutSessionViewModel (@MainActor · executes effects) → WorkoutSession (pure reducer: Action → State + Effects) → Domain (RepetitionTracker · PoseGeometry) · Services: CameraService · FramePipeline · PoseEstimator · ExerciseClassifier · AudioService
-- **Lajur thread:** `sessionQueue` AVCaptureSession · blocking startRunning() · `frameQueue` Vision + Core ML, synchronous (assumeIsolated) · `MainActor` AsyncStream → state → SwiftUI
+- **Judul:** 30 Frames a Second, Without Freezing the Screen *(versi awam, disetujui 16 Okt 2026; judul lama: "Swift 6 Pipeline, Zero Per-Frame Hops")*
+- **Subjudul:** Each frame is analyzed where the camera delivers it, and Swift 6 rejects code where two tasks could change the same data at once [13].
+- **Lapisan:** **Screens** (what you see) → **Runner** (plays sounds, runs timers, pauses the camera) → **Decider** (event in → next state + to-do list) → **Rules** (angle math, rep tracking) · **Tools** (camera, pose detection, AI model, audio)
+- **Tiga jalur:** **Camera lane** — starts the camera without freezing the screen · **Analysis lane** — finds joints on every frame and runs the AI every 10 frames, right where frames arrive · **Screen lane** — gets one small result per frame and updates the display
 - **Poin:**
-  1. **Pure Reducer Domain** — WorkoutSession maps Action → State + Effects; the ViewModel only executes effects. Testable without a device.
-  2. **Actors on Serial Queues** — Camera and frame pipeline are actors whose executors are dispatch queues; Vision and Core ML run synchronously.
-  3. **Render Only on Change** — The preview bypasses SwiftUI, and state is reassigned only when it differs, so 30 fps never forces redraws.
-- **Chip:** Swift 6 language mode · 1 documented @unchecked Sendable · iOS 17.2+
-- **Notes:** *"The frame pipeline is an actor that runs on the very queue the camera delivers frames to, so each frame enters isolation synchronously — no async hop per frame — while Swift 6 still checks for data races."*
+  1. **One Place Decides** — The same event always gives the same result, so the logic can be tested without an iPhone.
+  2. **No Handoffs per Frame** — Analysis runs on the lane the camera delivers to, so frames aren't passed along to wait in another queue.
+  3. **Redraw Only on Change** — The camera preview bypasses SwiftUI, and the screen updates only when something actually changes.
+- **Chip:** Swift 6 safety checks on · 1 documented exception · iOS 17.2+
+- **Notes:** *"Thirty frames arrive every second. Each one is analyzed right where the camera delivers it, so frames don't pile up, and only a small result goes to the screen. All workout decisions live in one place that can be tested without a phone, and Swift 6 refuses to compile code where two tasks could change the same data at once."* Di bawahnya, tempel tabel istilah teknis berikut untuk tanya-jawab.
+- **Istilah teknis di balik kata awam** (kolom tengah = teks slide lama):
+
+  | Di slide (awam) | Istilah teknis | Di kode |
+  |---|---|---|
+  | 30 Frames a Second, Without Freezing the Screen | Swift 6 Pipeline, Zero Per-Frame Hops | — |
+  | Analyzed where the camera delivers it · No Handoffs per Frame | Zero per-frame hops · Actors on Serial Queues (actor dengan executor dispatch queue, masuk isolasi secara sinkron) | `FramePipeline` di `frameQueue`, `assumeIsolated` |
+  | Swift 6 rejects code where two tasks could change the same data at once | Data-race-checked by the compiler | `SWIFT_VERSION = 6.0` |
+  | Screens | Features (SwiftUI views) | `Features/` |
+  | Runner | WorkoutSessionViewModel (@MainActor · executes effects) | `WorkoutSessionViewModel` |
+  | Decider · One Place Decides | Pure reducer: Action → State + Effects | `WorkoutSession` |
+  | Rules | Domain | `RepetitionTracker` · `PoseGeometry` |
+  | Tools | Services | `CameraService` · `FramePipeline` · `PoseEstimator` · `ExerciseClassifier` · `AudioService` |
+  | Camera lane | `sessionQueue`: AVCaptureSession, blocking `startRunning()` | `CameraService` |
+  | Analysis lane | `frameQueue`: Vision tiap frame + Core ML tiap 10 frame, synchronous | `FramePipeline` · `PoseEstimator` · `ExerciseClassifier` |
+  | Screen lane | `MainActor`: AsyncStream → state → SwiftUI | `WorkoutSessionViewModel` |
+  | Redraw Only on Change | Render only on change (preview layer langsung; state di-assign hanya bila berbeda) | `AVCaptureVideoPreviewLayer`, `if session.state != state` |
+  | Swift 6 safety checks on | Swift 6 language mode | `SWIFT_VERSION = 6.0` |
+  | 1 documented exception | 1 documented `@unchecked Sendable` | `ExerciseClassifier` |
 - **Sitasi:** [13] WWDC24 "Migrate your app to Swift 6"
-- **Data:** ✅ `SWIFT_VERSION = 6.0`, iOS 17.2. Belum ada test target, jadi jangan klaim "unit-tested".
+- **Data:** ✅ `SWIFT_VERSION = 6.0`, iOS 17.2. Belum ada test target, jadi jangan klaim "unit-tested"; poin 1 sengaja berbunyi "can be tested".
+  - 🟨 **Deck belum diubah:** ganti teks slide 11 di PowerPoint sesuai versi awam di atas (judul, subjudul, label lapisan dan jalur, 3 poin, chip, notes + tabel istilah).
+  - ⚠️ **Chip "1 documented exception"** hanya menghitung `@unchecked Sendable`. Kode juga punya 2 `nonisolated(unsafe)` yang terdokumentasi (`Belajar-FitRep.md` §9), dan keduanya juga melewati pemeriksaan compiler. Sebelum mengubah deck, pilih: "3 documented exceptions", "1 documented Sendable exception", atau teks lama "1 documented @unchecked Sendable".
+  - Koreksi saat menerapkan draf: Analysis lane menyebut AI menebak **tiap 10 frame**, bukan tiap frame (Vision berjalan tiap frame; model Core ML tiap 10 frame, slide 10).
 
 ---
 
@@ -449,44 +470,47 @@ Contoh: rep 2,5 detik, siku 160° → 60° → 160°, badan tegak. AI memberi 4 
 
 Slide ini menjawab: **"Bagaimana aplikasi memproses 30 gambar per detik tanpa macet, dan kodenya tetap rapi serta aman?"**
 
-##### 1. Arti judul: "Swift 6 Pipeline, Zero Per-Frame Hops"
-- **Swift 6** = versi bahasa Swift yang compiler-nya memeriksa ketat agar dua bagian program tidak mengubah data yang sama bersamaan (*data race*, penyebab crash acak). Pemeriksaannya terjadi **sebelum** aplikasi dijalankan [13].
-- **Pipeline** = jalur pemrosesan setiap frame: kamera → Vision (cari sendi) → Core ML (nilai form) → hasil.
-- **Zero per-frame hops** = frame **tidak dioper-oper** antar-antrean. Analogi: paket tidak perlu dipindah ke loket lain lalu menunggu giliran; paket langsung diproses di meja tempat kurir meletakkannya. Frame diproses di antrean yang sama tempat kamera mengirimnya.
+##### 1. Arti judul: "30 Frames a Second, Without Freezing the Screen"
+- **30 Frames a Second** = kamera mengirim 30 gambar per detik, dan semuanya harus diproses tanpa membuat aplikasi macet. Jalur pemrosesannya: kamera → Vision (cari sendi) → Core ML (nilai form) → hasil.
+- **Without Freezing the Screen** = layar tetap lancar: kamera dinyalakan di jalurnya sendiri, analisis berjalan di jalurnya sendiri, dan layar hanya menerima hasil ringkas.
+- **Subjudul "Swift 6 rejects code…"** = compiler Swift 6 memeriksa ketat agar dua bagian program tidak mengubah data yang sama bersamaan (*data race*, penyebab crash acak). Pemeriksaannya terjadi **sebelum** aplikasi dijalankan [13].
+- **"Analyzed where the camera delivers it"** (dulu *zero per-frame hops*) = frame **tidak dioper-oper** antar-antrean. Analogi: paket tidak perlu dipindah ke loket lain lalu menunggu giliran; paket langsung diproses di meja tempat kurir meletakkannya.
+- **Kenapa judul lama diganti?** "Zero Per-Frame Hops" mengundang pertanyaan "benar-benar nol?", padahal hasil tiap frame tetap dikirim sekali ke layar. Judul baru menyebut manfaatnya, bukan klaim angka nol.
 
 ##### 2. Lapisan aplikasi (analogi restoran)
-| Lapisan | Di slide | Analogi | Tugasnya |
+| Di slide (awam) | Di kode | Analogi | Tugasnya |
 |---|---|---|---|
-| Features | SwiftUI views | Ruang makan | Yang dilihat pengguna |
-| ViewModel | WorkoutSessionViewModel · @MainActor | **Pelayan** | Hanya **menjalankan** perintah: putar suara, nyalakan timer, jeda kamera |
-| Reducer | WorkoutSession · Action → State + Effects | **Kepala dapur** | Menerima kejadian (frame baru, timer, tombol), lalu menulis keadaan baru + daftar tugas. Tidak menyentuh kamera atau suara sendiri |
-| Domain | RepetitionTracker · PoseGeometry | **Buku resep** | Rumus sudut dan pelacak rep (slide 10) |
-| Services | CameraService · FramePipeline · PoseEstimator · ExerciseClassifier · AudioService | **Peralatan dapur** | Kamera, Vision, Core ML, audio |
+| **Screens** | SwiftUI views (Features) | Ruang makan | Yang dilihat pengguna |
+| **Runner** | WorkoutSessionViewModel · @MainActor | **Pelayan** | Hanya **menjalankan** perintah: putar suara, nyalakan timer, jeda kamera |
+| **Decider** | WorkoutSession · Action → State + Effects | **Kepala dapur** | Menerima kejadian (frame baru, timer, tombol), lalu menulis keadaan baru + daftar tugas. Tidak menyentuh kamera atau suara sendiri |
+| **Rules** | RepetitionTracker · PoseGeometry (Domain) | **Buku resep** | Rumus sudut dan pelacak rep (slide 10) |
+| **Tools** | CameraService · FramePipeline · PoseEstimator · ExerciseClassifier · AudioService (Services) | **Peralatan dapur** | Kamera, Vision, Core ML, audio |
 
-**"Pure reducer"** artinya hasilnya hanya bergantung pada masukan: kejadian yang sama selalu menghasilkan keputusan yang sama. Karena itu logikanya bisa diuji **tanpa iPhone** (*testable without a device*). Jujur: test otomatisnya **belum ada**, jadi katakan "bisa diuji", bukan "sudah diuji".
+**"Pure reducer"** (di slide: **Decider** dan poin **One Place Decides**) artinya hasilnya hanya bergantung pada masukan: kejadian yang sama selalu menghasilkan keputusan yang sama. Karena itu logikanya bisa diuji **tanpa iPhone** (*testable without a device*). Jujur: test otomatisnya **belum ada**, jadi katakan "bisa diuji", bukan "sudah diuji".
 
-##### 3. Tiga jalur kerja (di slide: sessionQueue · frameQueue · MainActor)
-| Jalur | Isinya | Bahasa mudahnya |
-|---|---|---|
-| **sessionQueue** | AVCaptureSession · blocking `startRunning()` | Menyalakan kamera. `startRunning()` **menunggu** sampai kamera siap, jadi dijalankan di jalur sendiri supaya layar tidak membeku |
-| **frameQueue** | Vision + Core ML, synchronous (`assumeIsolated`) | Setiap frame dianalisis **langsung di sini**, tanpa dioper |
-| **MainActor** | AsyncStream → state → SwiftUI | Jalur utama layar. Hasil analisis dikirim lewat **AsyncStream** (seperti ban berjalan), lalu layar diperbarui |
+##### 3. Tiga jalur kerja (di slide: Camera lane · Analysis lane · Screen lane)
+| Di slide | Di kode | Isinya | Bahasa mudahnya |
+|---|---|---|---|
+| **Camera lane** | `sessionQueue` | AVCaptureSession · blocking `startRunning()` | Menyalakan kamera. `startRunning()` **menunggu** sampai kamera siap, jadi dijalankan di jalur sendiri supaya layar tidak membeku |
+| **Analysis lane** | `frameQueue` | Vision tiap frame + Core ML tiap 10 frame, synchronous (`assumeIsolated`) | Setiap frame dianalisis **langsung di sini**, tanpa dioper. Vision mencari sendi di setiap frame; model AI menebak tiap 10 frame (slide 10) |
+| **Screen lane** | `MainActor` | AsyncStream → state → SwiftUI | Jalur utama layar. Hasil analisis dikirim lewat **AsyncStream** (seperti ban berjalan), lalu layar diperbarui |
 
 ##### 4. Tiga poin di slide
-1. **Pure Reducer Domain:** keputusan dipusatkan di satu tempat yang murni (kepala dapur); ViewModel hanya pelaksana. Mudah dilacak dan bisa diuji tanpa perangkat.
-2. **Actors on Serial Queues:** *actor* = ruangan berpintu satu; hanya satu pekerjaan di dalamnya pada satu waktu, jadi aman dari *data race*. Ruangan kamera dan ruangan pipeline ditempatkan **di antrean kamera itu sendiri** (`sessionQueue` dan `frameQueue`). Akibatnya frame masuk ke ruangan secara langsung, tanpa menunggu giliran.
-3. **Render Only on Change:** preview kamera langsung ditempel ke layar (`AVCaptureVideoPreviewLayer`), tidak lewat SwiftUI. Keadaan layar hanya diganti **kalau memang berbeda** (`if session.state != state`). Tanpa ini, 30 frame per detik bisa memaksa layar digambar ulang 30 kali per detik → boros baterai dan patah-patah.
+1. **One Place Decides** *(dulu "Pure Reducer Domain")*: keputusan dipusatkan di satu tempat yang murni (kepala dapur); Runner (ViewModel) hanya pelaksana. Mudah dilacak dan bisa diuji tanpa perangkat.
+2. **No Handoffs per Frame** *(dulu "Actors on Serial Queues")*: *actor* = ruangan berpintu satu; hanya satu pekerjaan di dalamnya pada satu waktu, jadi aman dari *data race*. Ruangan kamera dan ruangan pipeline ditempatkan **di antrean kamera itu sendiri** (`sessionQueue` dan `frameQueue`). Akibatnya frame masuk ke ruangan secara langsung, tanpa menunggu giliran.
+3. **Redraw Only on Change** *(dulu "Render Only on Change")*: preview kamera langsung ditempel ke layar (`AVCaptureVideoPreviewLayer`), tidak lewat SwiftUI. Keadaan layar hanya diganti **kalau memang berbeda** (`if session.state != state`). Tanpa ini, 30 frame per detik bisa memaksa layar digambar ulang 30 kali per detik → boros baterai dan patah-patah.
 
 ##### 5. Tiga label kecil (chip)
-- **Swift 6 language mode:** pemeriksaan data race penuh aktif (`SWIFT_VERSION = 6.0`).
-- **1 documented @unchecked Sendable:** satu-satunya tempat kita bilang ke compiler "percaya saja, ini aman", yaitu `ExerciseClassifier`. Kelas model buatan Xcode belum ditandai aman, padahal propertinya tidak pernah berubah dan hanya dipanggil dari satu actor. Alasannya ditulis di kode.
+- **Swift 6 safety checks on** *(dulu "Swift 6 language mode")*: pemeriksaan data race penuh aktif (`SWIFT_VERSION = 6.0`).
+- **1 documented exception** *(dulu "1 documented @unchecked Sendable")*: satu-satunya `@unchecked Sendable`, yaitu tempat kita bilang ke compiler "percaya saja, ini aman": `ExerciseClassifier`. Kelas model buatan Xcode belum ditandai aman, padahal propertinya tidak pernah berubah dan hanya dipanggil dari satu actor. Alasannya ditulis di kode. ⚠️ Kode juga punya 2 `nonisolated(unsafe)` yang terdokumentasi; label chip ini masih perlu diputuskan (lihat Data di atas).
 - **iOS 17.2+:** versi iOS minimum.
 
 ##### 6. Bila ditanya lebih dalam
-- **"Benar-benar nol lompatan?"** Nol lompatan saat frame **masuk** ke pipeline. Hasil analisis tiap frame tetap dikirim satu kali ke layar (MainActor) lewat AsyncStream. Itu yang memang perlu, karena hanya MainActor yang boleh mengubah tampilan.
+- **"Is there really no handoff?"** Tidak ada perpindahan antrean saat frame **masuk** ke analisis. Hasil analisis tiap frame tetap dikirim satu kali ke layar (MainActor) lewat AsyncStream; itulah "one small result per frame" di Screen lane. Itu memang perlu, karena hanya MainActor yang boleh mengubah tampilan.
+- **"Are all 30 frames analyzed?"** Kamera mengirim hingga 30 fps dan membuang frame yang terlambat (`alwaysDiscardsLateVideoFrames`) supaya tidak menumpuk. Apakah Vision selalu selesai di bawah 33 ms per frame **belum diukur** (L3, Lampiran B). Jangan klaim "every frame analyzed" tanpa angka itu.
 - **[13] WWDC24 "Migrate your app to Swift 6":** sumber bahwa mode bahasa Swift 6 memeriksa data race saat compile.
 
-> Kalimat siap ucap: "Setiap frame diproses langsung di antrean yang sama tempat kamera mengirimnya, jadi tidak ada antrean tambahan per frame, dan Swift 6 tetap memeriksa data race. Keputusan latihan dipusatkan di satu reducer murni, dan layar hanya digambar ulang kalau keadaannya benar-benar berubah."
+> Kalimat siap ucap: "Tiga puluh frame masuk setiap detik. Setiap frame dianalisis langsung di jalur tempat kamera mengirimnya, jadi tidak menumpuk, dan hanya hasil ringkasnya yang dikirim ke layar. Semua keputusan latihan ada di satu tempat yang bisa diuji tanpa iPhone, dan Swift 6 menolak meng-compile kode yang memungkinkan dua tugas mengubah data yang sama bersamaan."
 
 ### 09 · Robustness, Privacy & Inclusivity  *(deck 12)*
 **Tujuan:** siap menghadapi kondisi dan pengguna nyata, tanpa klaim uji pengguna.
@@ -714,6 +738,7 @@ Nomor global untuk **seluruh deck**, urut kemunculan pertama: FitRep memakai [1]
 - [ ] **Cocokkan tim dengan keynote 2024:** "Meet the Team" = 5 anggota + 1 mentor; peran pemilik "ML Modelling". Kalimat My Role sudah menjadi "ML & iOS Engineer"; meta "6 members" belum dicocokkan.
 - [x] **Samakan KPI testing accuracy:** semua slide kini 94% (sesuai Create ML, slide 15).
 - [ ] **Samakan rentang set/rep:** slide 6 "3–6 sets × 6–15 reps" vs kode (1–6 × 6–20, bawaan 3 × 12). Ikut sesuaikan thermal di kartu L3 slide 17 dan Lampiran B (6 × 15 → 6 × 20 bila mengikuti kode).
+- [ ] Terapkan versi awam slide 11 di PowerPoint (bagian 08), setelah memutuskan label chip "1 documented exception".
 - [ ] Isi link TestFlight dan QR di slide 20 (lihat bagian 15).
 - [ ] Pastikan video YouTube berstatus Public/Unlisted.
 - [ ] Konfirmasi persona Chris, jumlah responden wawancara, dan izin menampilkan nama depan di slide 5.
@@ -734,6 +759,7 @@ Nomor global untuk **seluruh deck**, urut kemunculan pertama: FitRep memakai [1]
 - **Perbaikan dokumen (16 Okt 2026, deck tidak berubah):** "Apple tidak mempublikasikan/merilis" → "tidak mendokumentasikan" (bagian 06 dan Belajar). "Kebal"/"tidak terpengaruh" penampilan → "jauh kurang sensitif", karena deteksi pose Vision sendiri tetap bisa terpengaruh. Durasi 2,3–2,8 s kini disebut durasi klip kami, bukan durasi rep manusia pada umumnya. Belajar T-B6 diluruskan: model melihat klip diam (di Others); yang tidak pernah dilihatnya adalah window campuran diam + awal rep. Nomor "[1], [9]" di dua entri changelog di bawah → "[1], [10]". Catatan ketergantungan thermal 6 × 15 pada rentang set/rep (slide 17, Lampiran B, Lampiran E). Jawaban lisan untuk sumber campuran testing/validasi di slide 13 (naskah bagian 10 dan Belajar T-C2b).
 - **Slide 9, naskah (16 Okt 2026, deck tidak berubah):** sitasi [12] "WWDC24 Session 10159" → **10161** (sama dengan Lampiran D). Kalimat siap ucap: "ukuran data yang diproses" → "input classifier", dan "sangat hemat komputasi" dihapus, diganti catatan bahwa 51.000× adalah perbandingan jumlah angka, bukan hasil ukur beban komputasi (Vision tetap membaca gambar; beban diukur di L3). Kini sejalan dengan tabel "Bedah Angka".
 - **Slide 9, panduan poin 1 (16 Okt 2026, deck tidak berubah):** "Sangat Ringan & Efisien (Hemat Data)" → **"Input Jauh Lebih Ringkas"**; klaim video mentah "membebani memori dan menguras baterai iPhone" dihapus karena belum diukur, diganti nuansa jujur (dampak memori/baterai menunggu L3; Vision tetap membaca gambar).
+- **Slide 11 versi awam (16 Okt 2026, disetujui pemilik; deck belum diubah):** judul "Swift 6 Pipeline, Zero Per-Frame Hops" → **"30 Frames a Second, Without Freezing the Screen"**. Subjudul, label lapisan (Screens · Runner · Decider · Rules · Tools), tiga jalur (Camera · Analysis · Screen lane), tiga poin (One Place Decides · No Handoffs per Frame · Redraw Only on Change), chip, dan notes ditulis ulang dengan bahasa awam; tabel istilah teknis ditambahkan di bagian 08. Analysis lane menyebut AI menebak tiap 10 frame (bukan tiap frame). Label chip "1 documented exception" masih perlu diputuskan karena ada 2 `nonisolated(unsafe)`. Belajar §9 dan T-D4 ikut disesuaikan.
 - **Slide 10 kartu 1:** ditambah syarat mulai "A rep starts when the elbow bends below 140°." (kotak teks ditinggikan agar 5 baris muat). Durasi 1–6 s dihitung dari < 140° (mulai) sampai > 145° (selesai).
 - **Durasi rep minimum 0,8 s → 1 s (15 Okt 2026):** `minimumDuration = 1.0` di `RepetitionTracker.swift` (keputusan pemilik: rep secepat 0,8 s terlalu berisiko). Slide 10 kartu 1 kini "within 1–6 s"; notes, naskah, Belajar, PRD ikut. Rep < 1 s ditolak tanpa bunyi. Belum diuji di iPhone.
 - **Slide 10:** "Smooth out camera jitter" → **"Average the last 5 frames"**: yang dihaluskan adalah titik sendi hasil deteksi pose yang melompat antar-frame, bukan getaran kamera; kata baru langsung menyebut caranya.
