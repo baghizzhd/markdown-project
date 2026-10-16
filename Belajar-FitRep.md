@@ -699,6 +699,8 @@ Rep juga **langsung SALAH tanpa melihat tebakan model** bila geometri mendeteksi
 ### Slide 11 dalam bahasa mudah ("30 Frames a Second, Without Freezing the Screen")
 Slide 11 menjawab: **bagaimana 30 gambar per detik diproses tanpa macet, dan kodenya tetap aman?** Sejak 16 Okt 2026 teks slidenya memakai bahasa awam; judul lama "Swift 6 Pipeline, Zero Per-Frame Hops". Tabel padanan istilah lengkap ada di naskah bagian 08.
 
+> Belum pernah belajar Swift? Mulai dari `Belajar-Swift-Slide11.md`: dasar Swift untuk pemula sampai concurrency, dikaitkan langsung ke setiap bagian slide 11.
+
 - **Swift 6 (subjudul: "Swift 6 rejects code where two tasks could change the same data at once"):** compiler memeriksa agar dua bagian program tidak mengubah data yang sama bersamaan (*data race*, penyebab crash acak). Diperiksa **sebelum** aplikasi jalan [13].
 - **"Analyzed where the camera delivers it" / No Handoffs per Frame** (dulu *zero per-frame hops*): frame tidak dioper ke antrean lain lalu menunggu giliran; frame langsung diproses di antrean tempat kamera mengirimnya. Analogi: paket langsung diproses di meja tempat kurir meletakkannya.
 - **Lapisan = restoran:** Screens (SwiftUI views) = ruang makan · Runner (ViewModel) = **pelayan** (hanya menjalankan perintah: suara, timer, kamera) · Decider (WorkoutSession) = **kepala dapur** (menerima kejadian → keadaan baru + daftar tugas) · Rules (Domain) = **buku resep** (rumus sudut, pelacak rep) · Tools (Services) = **peralatan dapur** (kamera, Vision, Core ML, audio).

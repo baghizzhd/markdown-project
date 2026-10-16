@@ -461,6 +461,7 @@ Contoh: rep 2,5 detik, siku 160° → 60° → 160°, badan tegak. AI memberi 4 
 - **Sitasi:** [13] WWDC24 "Migrate your app to Swift 6"
 - **Data:** ✅ `SWIFT_VERSION = 6.0`, iOS 17.2. Belum ada test target, jadi jangan klaim "unit-tested"; poin 1 sengaja berbunyi "can be tested".
   - 🟨 **Deck belum diubah:** ganti teks slide 11 di PowerPoint sesuai versi awam di atas (judul, subjudul, label lapisan dan jalur, 3 poin, chip, notes + tabel istilah).
+  - 📘 Materi belajar Swift dari nol untuk slide ini: `Belajar-Swift-Slide11.md`.
   - ✅ **Chip "3 documented exceptions"** (dipilih pemilik, 16 Okt 2026): 1 `@unchecked Sendable` (`ExerciseClassifier`) + 2 `nonisolated(unsafe)` (`CMSampleBuffer` yang dipakai sinkron di antrean yang sama, dan preview layer), semuanya diberi alasan di kode (`Belajar-FitRep.md` §9). Teks lama "1 documented @unchecked Sendable" hanya menghitung yang pertama.
   - Koreksi saat menerapkan draf: Analysis lane menyebut AI menebak **tiap 10 frame**, bukan tiap frame (Vision berjalan tiap frame; model Core ML tiap 10 frame, slide 10).
 
