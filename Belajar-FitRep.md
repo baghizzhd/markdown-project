@@ -265,7 +265,7 @@ Tepat saat kondisi ke-3 terpenuhi, barulah repetisi dihitung **+1**. Seperti sak
   - Piksel: 1280 × 720 × 3 warna = 2.764.800 angka per frame.
   - Kerangka: 18 sendi × (x, y, keyakinan) = 54 angka per frame.
   - Satu window 3 detik: 90 × 54 = 4.860 angka ≈ 19 KB (Float32).
-- **Tidak terpengaruh penampilan:** pakaian, pencahayaan, dan latar belakang hilang.
+- **Jauh kurang terpengaruh penampilan:** pakaian, pencahayaan, dan latar belakang tidak ikut masuk ke classifier. Kualitas deteksi pose Vision sendiri tetap bisa dipengaruhi cahaya atau pakaian, jadi jangan bilang "kebal".
 - **Privat sejak awal:** yang diproses hanya koordinat sendi.
 - **Berbentuk graf:** sendi sebagai simpul, tulang dan lintasan antar-frame sebagai sisi. Ini dasar riset GCN untuk pengenalan aksi berbasis kerangka [11].
   - Cara membaca diagram di slide: tiga kerangka (t − 1, t, t + 1) adalah frame berurutan. Garis biasa = tulang dalam satu frame. Garis putus-putus = sendi yang sama dari satu frame ke frame berikutnya, sehingga **gerakan** terbaca, bukan hanya pose diam.
@@ -273,7 +273,7 @@ Tepat saat kondisi ke-3 terpenuhi, barulah repetisi dihitung **+1**. Seperti sak
   - **VERIFIED:** isi model yang bisa diperiksa langsung dari file Core ML (lihat "Model apa yang dipakai?" di bawah).
   - **TO MEASURE:** pembagian kerja CPU, GPU, dan Neural Engine [12] belum diukur. Ukur lewat Xcode → `BicepCurl.mlmodel` → Performance, dengan iPhone tersambung. Jangan bilang "100% Neural Engine".
 
-> Kalimat siap ucap: "Saya memakai kerangka tubuh, bukan piksel. Datanya sekitar 51 ribu kali lebih kecil, tidak terpengaruh baju atau cahaya, dan lebih menjaga privasi. Soal isi model, saya hanya mengklaim yang bisa saya periksa sendiri dari file Core ML-nya."
+> Kalimat siap ucap: "Saya memakai kerangka tubuh, bukan piksel. Datanya sekitar 51 ribu kali lebih kecil, jauh kurang terpengaruh baju atau cahaya, dan lebih menjaga privasi. Soal isi model, saya hanya mengklaim yang bisa saya periksa sendiri dari file Core ML-nya."
 
 ### Model apa yang dipakai? (jawab hati-hati)
 - **Create ML Action Classifier** (berbasis body pose), diekspor sebagai Core ML.
@@ -286,7 +286,7 @@ Tepat saat kondisi ke-3 terpenuhi, barulah repetisi dihitung **+1**. Seperti sak
   - Cara cek: `coremltools` → `spec.neuralNetworkClassifier.layers` (hitung jenis lapisan); presisi terlihat di `metadata.json` hasil kompilasi.
 
 > Kalimat siap ucap: "Angka itu saya baca sendiri dari file Core ML-nya, jadi tidak perlu kutipan. Arsitekturnya memang tidak didokumentasikan Apple; WWDC dan dokumentasi Create ML hanya membahas data dan parameter training."
-- **Apple tidak mempublikasikan arsitektur internalnya.** Jangan mengklaim pasti "ST-GCN". Jawaban aman: *"Jaringan konvolusi atas urutan kerangka; konsepnya sejalan dengan riset GCN spasial-temporal, tetapi detail arsitekturnya tidak dipublikasikan Apple, jadi saya hanya mengklaim yang bisa saya inspeksi."*
+- **Apple tidak mendokumentasikan arsitektur internalnya.** Jangan mengklaim pasti "ST-GCN". Jawaban aman: *"Jaringan konvolusi atas urutan kerangka; konsepnya sejalan dengan riset GCN spasial-temporal, tetapi detail arsitekturnya tidak didokumentasikan Apple, jadi saya hanya mengklaim yang bisa saya inspeksi."*
 
 ---
 
@@ -296,7 +296,7 @@ Tepat saat kondisi ke-3 terpenuhi, barulah repetisi dihitung **+1**. Seperti sak
 1. **Rekam:** video iPhone dari samping.
 2. **Potong:** satu klip = satu repetisi (2,3–2,8 s).
    - **Kenapa 2,3–2,8 s cocok dengan 90-frame window (3,0 s)?**
-     - Pada 30 fps, satu repetisi bicep curl manusia (fase konsentrik naik + eksentrik turun) membutuhkan waktu alami sekitar 2,3–2,8 detik (≈ 70–84 frame).
+     - Pada 30 fps, satu repetisi di klip training kami (fase konsentrik naik + eksentrik turun) berdurasi 2,3–2,8 detik (≈ 70–84 frame). Ini durasi rep di data kami, bukan durasi rep manusia pada umumnya; tempo pengguna nyata bisa berbeda (gerbang 1 menerima 1–6 s).
      - Window Create ML 90 frame (3,0 detik) sengaja dipilih sedikit lebih besar dari rata-rata repetisi agar **seluruh siklus gerakan dari awal tekukan hingga lurus kembali tercakup utuh dalam satu jendela observasi**.
      - Jika window terlalu pendek (misal 60 frame / 2,0 s), gerakan terpotong di tengah dan model kehilangan konteks lintasan temporal secara utuh. Jika terlalu panjang (misal 150 frame / 5,0 s), latensi membengkak dan window akan didominasi noise frame antar-repetisi.
      - Selisih kecil (±0,2–0,7 s atau 6–20 frame) diisi oleh transisi gerakan dan ditangani oleh saringan overlap minimal 30 frame saat evaluasi repetisi (§8 & §11).
@@ -852,6 +852,7 @@ Tambahan: kalau kamera tidak tersedia, juga muncul pesan.
       - Hanya lengan kanan (kode: sisi mana pun).
       - Posisi ditahan ±3 s (kode: 30 frame ≈ 1 s).
       - Ambang confidence 0,70 (kode: 0,60).
+    - Angka thermal L3 "6 set × 15 rep" (§7) mengikuti rentang lama deck. Bila deck disamakan dengan kode (rep 6–20), kasus terberatnya menjadi 6 × 20.
     - Jika ditanya, jawab sesuai **kode**.
 
 ---
@@ -903,7 +904,7 @@ J: Saya tidak mengklaim itu, karena butuh validasi klinis. Yang saya klaim hanya
 J: Create ML Action Classifier yang diekspor ke Core ML, 4,1 MB, 3 kelas. Inputnya 90 frame × 18 sendi × (x, y, confidence) dari Vision.
 
 **T-B2. Apa arsitektur jaringannya?**
-J: Apple tidak mempublikasikannya. Yang bisa saya verifikasi dari spesifikasi Core ML: 27 lapisan konvolusi, 20 BatchNorm, 14 ReLU, komputasi Float16. Konsepnya sejalan dengan riset GCN atas kerangka [11], tapi saya tidak mengklaim detail yang tidak bisa saya cek.
+J: Apple tidak mendokumentasikannya. Yang bisa saya verifikasi dari spesifikasi Core ML: 27 lapisan konvolusi, 20 BatchNorm, 14 ReLU, komputasi Float16. Konsepnya sejalan dengan riset GCN atas kerangka [11], tapi saya tidak mengklaim detail yang tidak bisa saya cek.
 
 **T-B3. Kenapa Create ML, bukan PyTorch atau TensorFlow?**
 J: Datanya kecil dan waktunya terbatas. Kebutuhan utamanya juga on-device, dengan ekstraktor fitur yang **sama** antara training dan aplikasi (Vision). Create ML menyediakan itu langsung. Trade-off-nya: saya tidak bisa mengontrol arsitektur. Karena itu kelemahan model saya tutup di level sistem dengan veto geometri.
@@ -921,10 +922,10 @@ J:
 J: Kelas negatif (*negative class*) sesuai rekomendasi resmi Apple di WWDC20 [1] ("Build an action classifier with Create ML"). Apple menyarankan membuat folder `"other"` untuk menampung contoh gerakan seperti istirahat, peregangan, atau aktivitas non-target lainnya. Tujuannya adalah mencegah model salah mengklasifikasikan gerakan acak sebagai "Benar" atau "Salah". Di aplikasi FitRep, prediksi `Others` sengaja diabaikan sebagai bukti form bicep curl.
 
 **T-B6. Kenapa satu rep per klip?**
-J: Supaya label bersih: satu klip = satu vonis. Konsekuensinya, model tidak pernah melihat frame diam, dan itu jadi akar masalah rep pertama (§11).
+J: Supaya label bersih: satu klip = satu vonis. Konsekuensinya, model tidak pernah melihat window **campuran** diam + awal rep (klip diam sendiri ada di Others), dan itu jadi akar masalah rep pertama (§11).
 
 **T-B6b. Mengapa durasi klip 2,3–2,8 detik cocok dengan window 90 frame (3,0 detik)?**
-J: Pada 30 fps, satu repetisi curl alami memakan waktu 2,3–2,8 detik (≈ 70–84 frame). Window 90 frame (3,0 detik) dipilih agar **seluruh siklus repetisi (fase konsentrik dan eksentrik) tercakup utuh tanpa terpotong**. Jika window terlalu kecil (< 60 frame / 2 s), model kehilangan konteks lintasan gerak penuh; jika terlalu besar (> 120 frame / 4 s), responsivitas lambat dan window tercampur noise dari gerakan antar-repetisi. Selisih kecil frame diam di awal/akhir repetisi ditangani secara elegan oleh logika saringan overlap 30 frame (1,0 detik) di sistem hybrid kami.
+J: Pada 30 fps, satu repetisi di klip training kami berdurasi 2,3–2,8 detik (≈ 70–84 frame). Window 90 frame (3,0 detik) dipilih agar **seluruh siklus repetisi (fase konsentrik dan eksentrik) tercakup utuh tanpa terpotong**. Jika window terlalu kecil (< 60 frame / 2 s), model kehilangan konteks lintasan gerak penuh; jika terlalu besar (> 120 frame / 4 s), responsivitas lambat dan window tercampur noise dari gerakan antar-repetisi. Selisih kecil frame diam di awal/akhir repetisi ditangani secara elegan oleh logika saringan overlap 30 frame (1,0 detik) di sistem hybrid kami.
 
 **T-B7. Validasi di iterasi 60 mencapai 98,7%. Kenapa model akhirnya 94,3%?**
 J: Model yang dipakai adalah hasil akhir training di iterasi 80. Set validasinya kecil dan dipisahkan otomatis dari data training yang sama, jadi kurvanya bergejolak (60,8% → 89,3% → 84,0% → 98,7%). Satu titik tinggi di data seberisik itu bukan bukti model lebih baik. Bukti yang lebih kuat adalah uji dengan orang baru. **[CEK]** Kalau Anda sengaja memilih model ini dibanding checkpoint lain, sebutkan alasan Anda.
@@ -947,7 +948,7 @@ J: Ambang yang sama untuk Benar dan Salah, supaya satu window Salah yang lemah t
 J: Model lama punya kelas Idle dan OtherAction terpisah. Model aktif menggabungkan keduanya ke `Others` (klip diam + gerakan bukan curl), cara yang juga disebut Apple [1]. Yang masih menjadi masalah adalah window **campuran** diam + awal rep (lihat §11). Kondisi diam ditangani **geometri** (state machine tidak memulai rep sebelum siku < 140°) dan aturan overlap 30 frame. Rencana perbaikannya: latih ulang dengan klip yang memuat jeda diam.
 
 **T-B13. Kenapa input kerangka lebih baik dari piksel di kasus ini?**
-J: 54 nilai per frame dibanding 2,7 juta. Tidak terpengaruh pakaian, cahaya, atau latar. Privat sejak awal. Dan formatnya sama persis antara training dan aplikasi.
+J: 54 nilai per frame dibanding 2,7 juta. Pakaian, cahaya, dan latar tidak ikut masuk ke classifier (walau deteksi pose Vision sendiri tetap bisa terpengaruh). Privat sejak awal. Dan formatnya sama persis antara training dan aplikasi.
 
 ### C. Evaluasi
 
@@ -965,6 +966,10 @@ Catatan: header Testing-2 mencatat 180 item, tetapi tabel evaluasi berisi 185. I
 
 **T-C2. Apa kelemahan terbesar model?**
 J: Kesalahannya satu arah. Di test, ke-12 kesalahan semuanya memprediksi "Benar". Recall Salah di validasi 85,7%, artinya ±1 dari 7 window salah terbaca benar. Itu kesalahan yang mahal, makanya ayunan dan ROM divonis geometri.
+
+**T-C2b. Kenapa angka utama dari testing, tapi grafik recall per kelas di slide 13 dari validasi?**
+J: Untuk kelas Salah, recall validasi (85,7%) adalah angka yang lebih rendah, jadi lebih konservatif. Testing menunjukkan pola yang sama: Salah tetap kelas terlemah dengan recall 88,3% (53 dari 60), dan semua kesalahan mengarah ke Benar.
+- Catatan: recall Others di testing 92,3% (60 dari 65) memakai tabel 185 item, sedangkan header Testing-2 mencatat 180 (lihat §7).
 
 **T-C3. Apa beda precision dan recall di sini?**
 J:
@@ -1092,7 +1097,7 @@ J: Kamera tetap jalan dan pengguna diberi tahu. Secara teknis, sesi masih menghi
 J: Dengan aturan saat ini, status inconclusive secara logika tidak tercapai: tanpa bukti salah, rep yang ROM-nya lengkap diterima. Itu pilihan sadar demi rep pertama, tapi tercatat sebagai technical debt yang akan diperbaiki.
 
 **T-G6. "Apakah ini ST-GCN?"**
-J: Apple tidak mempublikasikan arsitektur Action Classifier. Yang saya tahu pasti dari spesifikasinya: 27 konvolusi, 20 BatchNorm, 14 ReLU. Saya hanya mengklaim yang bisa saya inspeksi.
+J: Apple tidak mendokumentasikan arsitektur Action Classifier. Yang saya tahu pasti dari spesifikasinya: 27 konvolusi, 20 BatchNorm, 14 ReLU. Saya hanya mengklaim yang bisa saya inspeksi.
 
 **T-G7. "Kenapa ambang ayunan 12°?"**
 J: Dipilih empiris dari uji coba, agar gerakan napas atau goyangan kecil tidak dianggap ayunan. Belum dikalibrasi dengan data berlabel; kalibrasinya bagian dari protokol L2.

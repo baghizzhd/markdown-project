@@ -215,7 +215,7 @@ Palet diambil dari cover dan About Me (slide 1–2) supaya seluruh portofolio sa
 
     Dengan demikian, ukuran *prediction window* yang digunakan di Create ML adalah **90 frame**.
   - ✅ **Mengapa 90 frame (3,0 s) dipilih padahal klip repetisi 2,3–2,8 s?**
-    - Durasi alami satu repetisi bicep curl manusia (fase konsentrik naik + eksentrik turun) berkisar 2,3–2,8 detik (≈ 70–84 frame).
+    - Satu repetisi di klip training kami (fase konsentrik naik + eksentrik turun) berdurasi 2,3–2,8 detik (≈ 70–84 frame). Ini durasi rep di data kami, bukan durasi rep manusia pada umumnya; tempo pengguna nyata bisa berbeda (gerbang 1 menerima 1–6 s).
     - Window 90 frame (3,0 detik) sengaja dipilih sedikit lebih besar dari durasi repetisi agar **seluruh siklus repetisi dari awal lengan mulai menekuk hingga lurus sempurna tercakup utuh tanpa terpotong dalam satu jendela analisis**.
     - Jika window terlalu pendek (misal 60 frame / 2,0 s), gerakan terpotong di tengah dan model kehilangan konteks lintasan temporal secara penuh. Jika terlalu panjang (misal 150 frame / 5,0 s), latensi membengkak dan window akan didominasi noise frame antar-repetisi.
     - Selisih kecil frame diam/transisi di awal atau akhir repetisi (±6–20 frame) ditangani secara aman oleh sistem logika vonis repetisi lewat syarat ambang overlap minimal 30 frame (slide 10 & 16).
@@ -239,7 +239,7 @@ Palet diambil dari cover dan About Me (slide 1–2) supaya seluruh portofolio sa
   - **4,860** values per window (90 frames × 54 values ≈ 19 KB, Float32)
 - **Poin Utama di Slide:**
   - **Graph-Shaped Signal** — Sendi bertindak sebagai *vertices*; tulang dan lintasan temporal frame-ke-frame bertindak sebagai *edges* — fondasi ilmiah dari riset skeleton Spatio-Temporal Graph Convolutional Networks (ST-GCN) [11].
-  - **What We Can Verify** `VERIFIED` — Spesifikasi Core ML fisik: 27 konvolusi, 20 BatchNorm, 14 ReLU, komputasi Float16. Apple tidak mempublikasikan arsitektur resminya di dokumentasi.
+  - **What We Can Verify** `VERIFIED` — Spesifikasi Core ML fisik: 27 konvolusi, 20 BatchNorm, 14 ReLU, komputasi Float16. Apple tidak mendokumentasikan arsitektur resminya.
   - **Hardware Placement** `TO MEASURE` — Core ML membagi eksekusi lapisan ke CPU, GPU, dan Apple Neural Engine (ANE) [12]; alokasi riil diukur lewat Xcode Performance Report.
 - **Notes Lisan di Slide:** *"Pose sequences strip away clothing, lighting, and background, and they're a 51,000-fold smaller input. I only claim what I can inspect in the Core ML spec, because Apple doesn't document the classifier's internals."*
 - **Sitasi:**
@@ -256,9 +256,10 @@ Slide ini menjawab pertanyaan paling mendasar dari reviewer/mentor AI/ML: **"Ken
 1. **Sangat Ringan & Efisien (Hemat Data ~51.200× lipat):**
    - Video mentah berukuran puluhan megabyte per detik, membebani memori dan menguras baterai iPhone.
    - Dengan mengekstrak koordinat sendi, input data menyusut drastis menjadi hanya **19 KB per 3 detik**.
-2. **Kebal Bias Penampilan (*Appearance-Invariant*):**
+2. **Jauh Kurang Terpengaruh Penampilan (*Appearance-Invariant*):**
    - Model berbasis piksel mudah tertipu oleh warna baju, motif pakaian, warna kulit, intensitas cahaya ruangan, bayangan, atau barang-barang di latar belakang kamar/gym.
-   - Urutan kerangka tubuh **membuang semua noise visual tersebut** dan murni hanya melihat pola biomekanika gerak tubuh manusia.
+   - Urutan kerangka tubuh **tidak membawa informasi visual tersebut** ke classifier; yang dinilai hanya pola gerak sendi.
+   - Nuansa jujur: kualitas deteksi pose Vision sendiri tetap bisa dipengaruhi cahaya, pakaian longgar, atau latar yang ramai. Jadi klaimnya "jauh kurang sensitif", bukan "kebal".
 3. **Privasi Alami Sejak Awal (*Private by Construction*):**
    - Aplikasi fitness sering digunakan di rumah atau kamar pribadi.
    - Dengan model skeleton, tidak ada rekaman wajah, bentuk tubuh, atau suasana ruangan pengguna yang disimpan atau diproses oleh model klasifikasi. Yang diolah murni hanya deretan angka koordinat $(x, y)$.
@@ -292,7 +293,7 @@ Slide 9 menggunakan dua tag status evaluasi yang menunjukkan integritas ilmiah t
 
 1. **Tag `VERIFIED` (Fakta Terbukti dari File Model Fisik):**
    - Saat file `BicepCurl.mlmodel` dibuka dan diinspeksi spesifikasinya (`coremltools` dan `xcrun coremlcompiler`), kita menemukan struktur lapisan internal: **27 lapisan Convolution, 20 Batch Normalization, 14 Activation ReLU**, 1 pooling, 1 softmax, dengan presisi komputasi **Float16**.
-   - *Kenapa tidak diberi kutipan paper atau dokumen Apple?* Karena ini adalah **temuan data primer langsung** dari model kita sendiri. Apple tidak pernah merilis dokumen yang menjelaskan arsitektur internal Create ML Action Classifier. Kita tidak boleh mengarang nama arsitektur (jangan klaim "ini pasti ST-GCN"), melainkan hanya menyatakan fakta lapisan yang terbukti bisa diverifikasi secara fisik.
+   - *Kenapa tidak diberi kutipan paper atau dokumen Apple?* Karena ini adalah **temuan data primer langsung** dari model kita sendiri. Apple tidak mendokumentasikan arsitektur internal Create ML Action Classifier. Kita tidak boleh mengarang nama arsitektur (jangan klaim "ini pasti ST-GCN"), melainkan hanya menyatakan fakta lapisan yang terbukti bisa diverifikasi secara fisik.
 2. **Tag `TO MEASURE` (Jujur Soal Alokasi Perangkat Keras):**
    - Framework Core ML secara cerdas membagi beban komputasi model ke tiga unit prosesor di iPhone: **CPU, GPU, dan Apple Neural Engine (ANE)** [12].
    - *Kenapa statusnya TO MEASURE?* Karena alokasi persentase beban nyata di iPhone fisik (misal berapa persen di ANE vs GPU) harus diukur langsung melalui **Xcode Performance Report** saat iPhone dicolokkan ke Mac. Status `TO MEASURE` menunjukkan kejujuran bahwa pengukuran hardware profiling pada perangkat fisik adalah langkah lanjutan yang belum selesai dilakukan. **Jangan pernah mengklaim "100% berjalan di Neural Engine" tanpa bukti pengukuran nyata.**
@@ -302,10 +303,10 @@ Slide 9 menggunakan dua tag status evaluasi yang menunjukkan integritas ilmiah t
 ##### 5. Script Siap Ucap (Untuk Presentasi & Tanya Jawab)
 
 - **Kalimat Utama Pitching (Presentasi Slide 9):**
-  > *"Di slide ini, kami menunjukkan mengapa kami memilih melatih model berbasis kerangka tubuh (skeleton pose) daripada piksel gambar kamera. Dengan memakai 18 titik pose Vision, ukuran data yang diproses menyusut 51.000 kali lipat—dari 2,7 juta angka piksel menjadi hanya 54 angka per frame, atau sekitar 19 Kilobyte per window 3 detik. Selain sangat hemat komputasi dan menjaga privasi pengguna, model ini kebal terhadap warna pakaian, warna kulit, maupun pencahayaan ruangan. Terkait arsitektur internalnya, karena Apple tidak mendokumentasikan jeroan Create ML, kami memegang integritas ilmiah dengan hanya mengklaim apa yang kami verifikasi langsung dari spesifikasi file Core ML-nya: yaitu 27 konvolusi, 20 batchnorm, dan komputasi Float16."*
+  > *"Di slide ini, kami menunjukkan mengapa kami memilih melatih model berbasis kerangka tubuh (skeleton pose) daripada piksel gambar kamera. Dengan memakai 18 titik pose Vision, ukuran data yang diproses menyusut 51.000 kali lipat—dari 2,7 juta angka piksel menjadi hanya 54 angka per frame, atau sekitar 19 Kilobyte per window 3 detik. Selain sangat hemat komputasi dan menjaga privasi pengguna, model ini jauh kurang sensitif terhadap warna pakaian, warna kulit, maupun pencahayaan ruangan. Terkait arsitektur internalnya, karena Apple tidak mendokumentasikan jeroan Create ML, kami memegang integritas ilmiah dengan hanya mengklaim apa yang kami verifikasi langsung dari spesifikasi file Core ML-nya: yaitu 27 konvolusi, 20 batchnorm, dan komputasi Float16."*
 
 - **Bila Ditanya: "Arsitektur apa sebenarnya yang dipakai Create ML Action Classifier ini?"**
-  > *"Apple tidak mempublikasikan arsitektur resminya di dokumentasi maupun sesi WWDC. Namun, dari inspeksi langsung file `.mlmodel` yang kami ekstrak, model ini terdiri dari 27 lapisan konvolusi, 20 batchnorm, dan 14 ReLU yang memproses data urutan koordinat sendi. Secara konseptual, struktur data spatio-temporal graph ini sejalan dengan penelitian Spatio-Temporal Graph Convolutional Networks (ST-GCN) seperti pada paper Ren dkk. 2024, tetapi kami membatasi klaim kami hanya pada lapisan yang terverifikasi di file Core ML."*
+  > *"Apple tidak mendokumentasikan arsitektur resminya, baik di dokumentasi maupun di sesi WWDC. Namun, dari inspeksi langsung file `.mlmodel` yang kami ekstrak, model ini terdiri dari 27 lapisan konvolusi, 20 batchnorm, dan 14 ReLU yang memproses data urutan koordinat sendi. Secara konseptual, struktur data spatio-temporal graph ini sejalan dengan penelitian Spatio-Temporal Graph Convolutional Networks (ST-GCN) seperti pada paper Ren dkk. 2024, tetapi kami membatasi klaim kami hanya pada lapisan yang terverifikasi di file Core ML."*
 
 - **Bila Ditanya: "Apakah model ini sudah 100% berjalan di Apple Neural Engine (ANE)?"**
   > *"Core ML secara otomatis membagi eksekusi lapisan ke CPU, GPU, dan Neural Engine. Di slide kami tandai 'TO MEASURE' karena alokasi pastinya harus diukur secara empiris di iPhone fisik melalui Xcode Performance Report saat profiling. Kami tidak ingin mengklaim '100% ANE' sebelum memiliki data pengukuran fisiknya."*
@@ -509,6 +510,7 @@ Slide ini menjawab: **"Bagaimana aplikasi memproses 30 gambar per detik tanpa ma
 - **Notes:** *"At window level the model reaches 94% accuracy on the Testing-2 set, but its typical mistake is letting an incorrect rep pass as correct — roughly one in seven. That's why swing and range of motion are checked geometrically, independent of the model."*
 - **Sumber (baris slide):** Create ML (Xcode) — FitRep_Model.mlproj, model FitRep(Best Model), 8 Sep 2026 · window-level metrics · screenshots on the next two slides
 - **Data:** ✅ Training 34.432/35.533 window · validasi 1.717/1.820 · Testing-2 94% (173/185 = 93,5%, dibulatkan Create ML) · recall Salah 85,7% (validasi). Jangan menyebut angka testing sebagai *unseen/held-out*.
+- 🟨 **Sumber campuran:** KPI utama memakai **testing**, tetapi grafik recall dan insight "1 in 7" memakai **validasi**. Bila ditanya: *"For the Incorrect class, validation recall is the lower, more conservative figure. Testing shows the same pattern: Incorrect is still the weakest class at 88.3% recall, 53 of 60, and every error goes toward Correct."* Opsi slide (dicatat, deck belum diubah): ganti grafik ke recall testing — Correct 100% (60/60) · Other 92,3% (60/65) · Incorrect 88,3% (53/60) — dan insight menjadi "7 of 60 incorrect windows read as correct". Bila memakai angka testing, ingat selisih Others 65 vs header 180 (slide 15).
 
 ### 10b · Create ML Evidence  *(deck 14–15)* — **dipindah dari lampiran, rev. 7.2**
 **Tujuan:** bukti asli angka di slide 13 langsung menyusul angkanya. Label pill "Create ML Evidence" (sebelumnya "Appendix · Create ML"); caption slide 13 kini "screenshots on the next two slides".
@@ -549,6 +551,7 @@ Slide ini menjawab: **"Bagaimana aplikasi memproses 30 gambar per detik tanpa ma
 - **Notes:** *"Window accuracy is only the first level. The verdict users feel is rep-level, and the experience they feel is latency and heat on a real phone — so those are the next measurements, with the protocol fixed before collecting data."*
 - **Sitasi:** [16] Rehman dkk. 2024, *Algorithms* (k-fold 89% vs LOSO 76%) · [17] Stoica & Babu 2024, *Signal Process.* (MCC biner dan multikelas) · [12] WWDC24 Core ML
 - **Data:** 🟦 L2 dan L3 belum diukur; protokolnya di Lampiran B. **Tidak ada target angka** di slide, karena PRD hanya memuat contoh `[isi, misal ≥ 85%]`. Angka ≈ 67 ms hanya jeda filter, bukan latensi end-to-end. Catatan: slide ini belum punya teks pojok kanan atas "Portfolio 1 of 3 · FitRep" seperti slide FitRep lain.
+- ⚠️ **Thermal "6 sets × 15 reps"** mengikuti rentang lama slide 6 (3–6 × 6–15). Bila slide 6 disamakan dengan kode (rep 6–20), kasus terberatnya **6 × 20** (±8–9 menit): ubah kartu L3 dan Lampiran B. Bila kode yang diubah ke 6–15, biarkan.
 
 ### 13 · Reflection & Roadmap  *(deck 18)*
 **Tujuan:** *growth mindset* + langkah berikutnya yang terprioritas.
@@ -633,7 +636,7 @@ Slide ini menjawab: **"Bagaimana aplikasi memproses 30 gambar per detik tanpa ma
 - **Inferensi Core ML (L3):** Xcode → `BicepCurl.mlmodel` → Performance → iPhone tersambung → median prediction time + compute unit per lapisan.
 - **Vision per frame (L3):** Instruments → Time Profiler / `os_signpost`; lulus bila < 33 ms (anggaran 30 fps).
 - **End-to-end (L3):** rekam slow-motion 240 fps (lengan + layar satu frame); hitung frame dari siku lurus sampai pulse hijau ÷ 240. Angka ≈ 67 ms hanya jeda filter, belum termasuk Vision, hop ke MainActor, dan audio.
-- **Thermal (L3):** track Thermal State di Instruments selama sesi 6 × 15 rep (±7–8 menit).
+- **Thermal (L3):** track Thermal State di Instruments selama sesi 6 × 15 rep (±7–8 menit). ⚠️ Ikuti keputusan set/rep slide 6: bila disamakan dengan kode (rep 6–20), pakai 6 × 20 (±8–9 menit).
 - **Privasi (G3):** Settings → Privacy & Security → App Privacy Report → FitRep tanpa domain jaringan.
 > Kisaran tebakan hanya untuk *sanity check* perencanaan dan **tidak boleh** tampil di slide.
 
@@ -709,7 +712,7 @@ Nomor global untuk **seluruh deck**, urut kemunculan pertama: FitRep memakai [1]
 - [x] Isi meta slide 01 (anggota, durasi): "6 members · 4 weeks".
 - [ ] **Cocokkan tim dengan keynote 2024:** "Meet the Team" = 5 anggota + 1 mentor; peran pemilik "ML Modelling". Kalimat My Role sudah menjadi "ML & iOS Engineer"; meta "6 members" belum dicocokkan.
 - [x] **Samakan KPI testing accuracy:** semua slide kini 94% (sesuai Create ML, slide 15).
-- [ ] **Samakan rentang set/rep:** slide 6 "3–6 sets × 6–15 reps" vs kode (1–6 × 6–20, bawaan 3 × 12).
+- [ ] **Samakan rentang set/rep:** slide 6 "3–6 sets × 6–15 reps" vs kode (1–6 × 6–20, bawaan 3 × 12). Ikut sesuaikan thermal di kartu L3 slide 17 dan Lampiran B (6 × 15 → 6 × 20 bila mengikuti kode).
 - [ ] Isi link TestFlight dan QR di slide 20 (lihat bagian 15).
 - [ ] Pastikan video YouTube berstatus Public/Unlisted.
 - [ ] Konfirmasi persona Chris, jumlah responden wawancara, dan izin menampilkan nama depan di slide 5.
@@ -727,6 +730,7 @@ Nomor global untuk **seluruh deck**, urut kemunculan pertama: FitRep memakai [1]
 
 ---
 **Changelog rev. 7.2 (2026-10-14):**
+- **Perbaikan dokumen (16 Okt 2026, deck tidak berubah):** "Apple tidak mempublikasikan/merilis" → "tidak mendokumentasikan" (bagian 06 dan Belajar). "Kebal"/"tidak terpengaruh" penampilan → "jauh kurang sensitif", karena deteksi pose Vision sendiri tetap bisa terpengaruh. Durasi 2,3–2,8 s kini disebut durasi klip kami, bukan durasi rep manusia pada umumnya. Belajar T-B6 diluruskan: model melihat klip diam (di Others); yang tidak pernah dilihatnya adalah window campuran diam + awal rep. Nomor "[1], [9]" di dua entri changelog di bawah → "[1], [10]". Catatan ketergantungan thermal 6 × 15 pada rentang set/rep (slide 17, Lampiran B, Lampiran E). Jawaban lisan untuk sumber campuran testing/validasi di slide 13 (naskah bagian 10 dan Belajar T-C2b).
 - **Slide 10 kartu 1:** ditambah syarat mulai "A rep starts when the elbow bends below 140°." (kotak teks ditinggikan agar 5 baris muat). Durasi 1–6 s dihitung dari < 140° (mulai) sampai > 145° (selesai).
 - **Durasi rep minimum 0,8 s → 1 s (15 Okt 2026):** `minimumDuration = 1.0` di `RepetitionTracker.swift` (keputusan pemilik: rep secepat 0,8 s terlalu berisiko). Slide 10 kartu 1 kini "within 1–6 s"; notes, naskah, Belajar, PRD ikut. Rep < 1 s ditolak tanpa bunyi. Belum diuji di iPhone.
 - **Slide 10:** "Smooth out camera jitter" → **"Average the last 5 frames"**: yang dihaluskan adalah titik sendi hasil deteksi pose yang melompat antar-frame, bukan getaran kamera; kata baru langsung menyebut caranya.
@@ -735,12 +739,12 @@ Nomor global untuk **seluruh deck**, urut kemunculan pertama: FitRep memakai [1]
 - **Slide 9:** "Apple doesn't publish the architecture" → "doesn't **document**" (klaim ketiadaan lebih mudah dipertahankan; sama dengan notes).
 - **Sumber baru [9] (14 Okt 2026):** Sivakumar dkk. 2024, *PeerJ Comput. Sci.* — dicantumkan di kotak **Split [9]** slide 8 ("Common 70/30 split · Train · validate · test") dan notes. Nomor lama [9]–[22] → **[10]–[23]** di seluruh deck, naskah (sebelum changelog ini), Belajar, dan `Revisi-Sitasi-IEEE.md`; References kini 23 entri (kolom 11 + 12). Nomor di entri changelog lama sengaja tidak diubah.
 - **Struktur:** dua slide bukti Create ML dipindah dari lampiran (deck 19–20) ke **tepat setelah Model Results (deck 14–15)**. Error Analysis → deck 16, Multi-Level Evaluation → 17, Reflection → 18, App Exposure → 19, Watch & Try → 20. SIDIA (21–30) dan References (31) tetap. Nomor sitasi tidak berubah.
-- **Slide 8 (Data Pipeline):** ditambah sitasi [1] (transkrip WWDC20 10043): subjudul kini menyebut alasan memakai Action Classifier (belajar gerakan dari body pose), poin 1 menyebut panduan Apple ~50 klip per kelas (dengan catatan jujur "including augmented ones"), poin 3 menjadi "the same 18 Vision body landmarks at the same 30 fps [1], [9]". Nomor sitasi tidak berubah.
+- **Slide 8 (Data Pipeline):** ditambah sitasi [1] (transkrip WWDC20 10043): subjudul kini menyebut alasan memakai Action Classifier (belajar gerakan dari body pose), poin 1 menyebut panduan Apple ~50 klip per kelas (dengan catatan jujur "including augmented ones"), poin 3 menjadi "the same 18 Vision body landmarks at the same 30 fps [1], [10]". Nomor sitasi tidak berubah.
 - **Slide 7:** bar Decision "Use rules where the answer is clear; use AI only where judgment is needed." → **"Angles count the reps; AI checks the form."** (lebih konkret, langsung menjawab subjudul).
 - **Slide 7:** baris "Training data needed" kini **tanpa ikon** (teks saja: none · a lot · 140 clips per type), karena ikon ✓/✕ di baris ini mudah terbaca sebagai "ya/tidak butuh data" dan bertentangan dengan legenda good/poor.
 - **Slide 7:** baris "On-device cost / Runs on a phone" **dihapus** — kedua pendekatan bisa berjalan di ponsel, jadi baris itu tidak membedakan. Beban komputasi model video tetap disebut di sel "How it works" ("heavy computing [6]"). Tinggi baris lain disesuaikan agar tabel tetap sejajar dengan bar Decision.
 - **Slide 7:** legenda ✓ good · △ partly · ✕ poor dipindah dari caption bawah ke sel kiri atas tabel.
-- **Audit overlap 30 frame (2026-10-14):** ambang `minimumEvidenceOverlapFrames` = 30 frame (1,0 s) kini sama di kode, slide 10 dan 16, naskah, Belajar, dan PRD. Perbaikan kecil: kotak Trim slide 8 → "One rep per clip · 2.3–2.8 s" (tanpa "≈", en dash); poin 1 slide 8 "minimum about 50" → "about 50 per class [1]"; notes slide 10 → "dicek ulang 2026-10-14". Sitasi [8] (kotak Create ML: pengaturan training) dan [1], [9] (kartu Same Extractor: aplikasi saat berjalan) sengaja berbeda karena mendukung klaim yang berbeda.
+- **Audit overlap 30 frame (2026-10-14):** ambang `minimumEvidenceOverlapFrames` = 30 frame (1,0 s) kini sama di kode, slide 10 dan 16, naskah, Belajar, dan PRD. Perbaikan kecil: kotak Trim slide 8 → "One rep per clip · 2.3–2.8 s" (tanpa "≈", en dash); poin 1 slide 8 "minimum about 50" → "about 50 per class [1]"; notes slide 10 → "dicek ulang 2026-10-14". Sitasi [8] (kotak Create ML: pengaturan training) dan [1], [10] (kartu Same Extractor: aplikasi saat berjalan) sengaja berbeda karena mendukung klaim yang berbeda.
 - **Rapikan deck (14 Okt 2026):** salah ketik slide 1, 3, 5 diperbaiki; teks pojok kanan atas → "Portfolio … · …" di 27 slide; notes slide 8 ditambah sumber rumus window [8]. PRD disinkronkan dengan kode (sisi kiri/kanan, posisi 30 frame, sudut 75°/145°, inconclusive tidak tercapai). `Revisi-Sitasi-IEEE.md` diperbarui untuk slide 8 (33 baris).
 - **Kelas Other = klip diam + gerakan bukan curl:** semua kalimat "tanpa kelas Idle" diluruskan menjadi "tanpa kelas Idle **terpisah**" (notes slide 8 dan 10, naskah, Belajar, PRD).
 - **Slide 8 · kelas Other ditekankan [1]:** kartu 1 kini **"An Other Class Is a Must"** (kutipan transkrip: model "also needs to understand when we're not exercising"); jumlah klip, augmentasi, dan panduan ~50 digabung di kartu 2 **"Balanced Classes, Augmented Clips"**. Kata "Other" di kotak Label [1] diberi warna aksen. Notes ditambah satu kalimat tentang kelas Other.
