@@ -253,9 +253,10 @@ Palet diambil dari cover dan About Me (slide 1–2) supaya seluruh portofolio sa
 Slide ini menjawab pertanyaan paling mendasar dari reviewer/mentor AI/ML: **"Kenapa kalian tidak melatih model langsung dari video atau piksel kamera (seperti CNN/Vision biasa), melainkan lewat titik kerangka tubuh Vision?"**
 
 ##### 1. Tiga Alasan Utama: Mengapa Kerangka Jauh Lebih Unggul (*Why Skeletons Beat Pixels*)
-1. **Sangat Ringan & Efisien (Hemat Data ~51.200× lipat):**
-   - Video mentah berukuran puluhan megabyte per detik, membebani memori dan menguras baterai iPhone.
-   - Dengan mengekstrak koordinat sendi, input data menyusut drastis menjadi hanya **19 KB per 3 detik**.
+1. **Input Jauh Lebih Ringkas (~51.200× lebih sedikit angka):**
+   - Video mentah 720p berisi jutaan angka per frame, atau puluhan megabyte per detik bila tidak dikompresi.
+   - Dengan mengekstrak koordinat sendi, input classifier menyusut menjadi hanya **19 KB per window 3 detik**.
+   - Nuansa jujur: dampaknya ke memori dan baterai iPhone **belum diukur** (evaluasi L3), dan Vision tetap membaca gambar setiap frame. Jadi klaimnya "input lebih ringkas", bukan "hemat baterai".
 2. **Jauh Kurang Terpengaruh Penampilan (*Appearance-Invariant*):**
    - Model berbasis piksel mudah tertipu oleh warna baju, motif pakaian, warna kulit, intensitas cahaya ruangan, bayangan, atau barang-barang di latar belakang kamar/gym.
    - Urutan kerangka tubuh **tidak membawa informasi visual tersebut** ke classifier; yang dinilai hanya pola gerak sendi.
@@ -732,6 +733,7 @@ Nomor global untuk **seluruh deck**, urut kemunculan pertama: FitRep memakai [1]
 **Changelog rev. 7.2 (2026-10-14):**
 - **Perbaikan dokumen (16 Okt 2026, deck tidak berubah):** "Apple tidak mempublikasikan/merilis" → "tidak mendokumentasikan" (bagian 06 dan Belajar). "Kebal"/"tidak terpengaruh" penampilan → "jauh kurang sensitif", karena deteksi pose Vision sendiri tetap bisa terpengaruh. Durasi 2,3–2,8 s kini disebut durasi klip kami, bukan durasi rep manusia pada umumnya. Belajar T-B6 diluruskan: model melihat klip diam (di Others); yang tidak pernah dilihatnya adalah window campuran diam + awal rep. Nomor "[1], [9]" di dua entri changelog di bawah → "[1], [10]". Catatan ketergantungan thermal 6 × 15 pada rentang set/rep (slide 17, Lampiran B, Lampiran E). Jawaban lisan untuk sumber campuran testing/validasi di slide 13 (naskah bagian 10 dan Belajar T-C2b).
 - **Slide 9, naskah (16 Okt 2026, deck tidak berubah):** sitasi [12] "WWDC24 Session 10159" → **10161** (sama dengan Lampiran D). Kalimat siap ucap: "ukuran data yang diproses" → "input classifier", dan "sangat hemat komputasi" dihapus, diganti catatan bahwa 51.000× adalah perbandingan jumlah angka, bukan hasil ukur beban komputasi (Vision tetap membaca gambar; beban diukur di L3). Kini sejalan dengan tabel "Bedah Angka".
+- **Slide 9, panduan poin 1 (16 Okt 2026, deck tidak berubah):** "Sangat Ringan & Efisien (Hemat Data)" → **"Input Jauh Lebih Ringkas"**; klaim video mentah "membebani memori dan menguras baterai iPhone" dihapus karena belum diukur, diganti nuansa jujur (dampak memori/baterai menunggu L3; Vision tetap membaca gambar).
 - **Slide 10 kartu 1:** ditambah syarat mulai "A rep starts when the elbow bends below 140°." (kotak teks ditinggikan agar 5 baris muat). Durasi 1–6 s dihitung dari < 140° (mulai) sampai > 145° (selesai).
 - **Durasi rep minimum 0,8 s → 1 s (15 Okt 2026):** `minimumDuration = 1.0` di `RepetitionTracker.swift` (keputusan pemilik: rep secepat 0,8 s terlalu berisiko). Slide 10 kartu 1 kini "within 1–6 s"; notes, naskah, Belajar, PRD ikut. Rep < 1 s ditolak tanpa bunyi. Belum diuji di iPhone.
 - **Slide 10:** "Smooth out camera jitter" → **"Average the last 5 frames"**: yang dihaluskan adalah titik sendi hasil deteksi pose yang melompat antar-frame, bukan getaran kamera; kata baru langsung menyebut caranya.
