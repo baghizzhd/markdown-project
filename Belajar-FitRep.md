@@ -115,6 +115,7 @@ Tiga prinsip menjawab:
 | **91** | String terlokalisasi (bahasa sumber Indonesia + English) |
 | **6** | Kasus kegagalan yang ditangani di kode |
 | **1** | Satu-satunya `@unchecked Sendable` (pembungkus model Core ML) |
+| **3** | Pengecualian terdokumentasi di chip slide 11: 1 `@unchecked Sendable` + 2 `nonisolated(unsafe)` |
 | **iOS 17.2+ · Swift 6** | Target minimum · language mode |
 
 ### Tim **[CEK]**
@@ -708,7 +709,7 @@ Slide 11 menjawab: **bagaimana 30 gambar per detik diproses tanpa macet, dan kod
   - **Screen lane** (`MainActor`): jalur layar; hasil tiap frame dikirim lewat AsyncStream (seperti ban berjalan).
 - **Actor = ruangan berpintu satu:** hanya satu pekerjaan di dalamnya pada satu waktu → aman dari data race. Ruangan kamera dan pipeline ditaruh **di antrean kamera itu sendiri**, jadi frame masuk tanpa menunggu giliran (`assumeIsolated`).
 - **Redraw Only on Change:** preview kamera langsung ke layar (bukan SwiftUI), dan keadaan layar hanya diganti kalau berbeda (`if session.state != state`). Tanpa ini, layar bisa digambar ulang 30 kali per detik → boros baterai.
-- **1 documented exception** (`@unchecked Sendable`): satu-satunya "percaya saja, ini aman" jenis ini ke compiler, yaitu `ExerciseClassifier` (kelas model buatan Xcode). Aman karena propertinya tidak pernah berubah dan hanya dipanggil dari satu actor. Ada juga 2 `nonisolated(unsafe)` yang terdokumentasi (lihat di bawah), jadi label chip ini masih perlu diputuskan.
+- **3 documented exceptions** (dulu "1 documented @unchecked Sendable"): tiga tempat "percaya saja, ini aman" ke compiler, semuanya diberi alasan di kode. Satu `@unchecked Sendable` di `ExerciseClassifier` (kelas model buatan Xcode; aman karena propertinya tidak pernah berubah dan hanya dipanggil dari satu actor), ditambah dua `nonisolated(unsafe)` (lihat di bawah).
 - **Bila ditanya "is there really no handoff?":** tidak ada perpindahan antrean saat frame **masuk** analisis. Hasil tiap frame tetap dikirim sekali ke MainActor lewat AsyncStream, karena hanya MainActor yang boleh mengubah tampilan.
 - **Bila ditanya "apakah ke-30 frame selalu dianalisis?":** kamera mengirim hingga 30 fps dan membuang frame yang terlambat. Waktu Vision per frame (target < 33 ms) **belum diukur** (L3), jadi jangan klaim semua frame pasti dianalisis.
 
@@ -1017,7 +1018,7 @@ J:
 J: Callback kamera sudah berada di antrean milik actor pipeline, jadi masuk ke isolasi actor bisa dilakukan sinkron dengan `assumeIsolated`. Tidak ada `await` atau perpindahan thread untuk setiap frame saat masuk analisis, tapi compiler Swift 6 tetap memeriksa data race. Hasil tiap frame tetap dikirim sekali ke MainActor lewat AsyncStream.
 
 **T-D5. Kenapa ada `@unchecked Sendable`?**
-J: Hanya satu, di pembungkus model, karena kelas yang di-generate Xcode tidak Sendable. Aman karena semua propertinya immutable dan `predict` hanya dipanggil dari actor pipeline. Alasannya didokumentasikan di kode.
+J: Hanya satu, di pembungkus model, karena kelas yang di-generate Xcode tidak Sendable. Aman karena semua propertinya immutable dan `predict` hanya dipanggil dari actor pipeline. Alasannya didokumentasikan di kode. Di slide 11, chip-nya berbunyi "3 documented exceptions": yang ini ditambah 2 `nonisolated(unsafe)` (`CMSampleBuffer` dan preview layer), semuanya dengan alasan tertulis.
 
 **T-D6. Bagaimana mencegah UI render ulang 30 kali per detik?**
 J: Preview kamera memakai layer langsung, tidak lewat SwiftUI. State hanya di-assign kalau nilainya berubah, karena meng-assign nilai yang sama pun tetap memicu render ulang. Properti internal ViewModel ditandai `@ObservationIgnored`.

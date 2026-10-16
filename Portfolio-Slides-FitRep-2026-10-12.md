@@ -438,7 +438,7 @@ Contoh: rep 2,5 detik, siku 160° → 60° → 160°, badan tegak. AI memberi 4 
   1. **One Place Decides** — The same event always gives the same result, so the logic can be tested without an iPhone.
   2. **No Handoffs per Frame** — Analysis runs on the lane the camera delivers to, so frames aren't passed along to wait in another queue.
   3. **Redraw Only on Change** — The camera preview bypasses SwiftUI, and the screen updates only when something actually changes.
-- **Chip:** Swift 6 safety checks on · 1 documented exception · iOS 17.2+
+- **Chip:** Swift 6 safety checks on · 3 documented exceptions · iOS 17.2+
 - **Notes:** *"Thirty frames arrive every second. Each one is analyzed right where the camera delivers it, so frames don't pile up, and only a small result goes to the screen. All workout decisions live in one place that can be tested without a phone, and Swift 6 refuses to compile code where two tasks could change the same data at once."* Di bawahnya, tempel tabel istilah teknis berikut untuk tanya-jawab.
 - **Istilah teknis di balik kata awam** (kolom tengah = teks slide lama):
 
@@ -457,11 +457,11 @@ Contoh: rep 2,5 detik, siku 160° → 60° → 160°, badan tegak. AI memberi 4 
   | Screen lane | `MainActor`: AsyncStream → state → SwiftUI | `WorkoutSessionViewModel` |
   | Redraw Only on Change | Render only on change (preview layer langsung; state di-assign hanya bila berbeda) | `AVCaptureVideoPreviewLayer`, `if session.state != state` |
   | Swift 6 safety checks on | Swift 6 language mode | `SWIFT_VERSION = 6.0` |
-  | 1 documented exception | 1 documented `@unchecked Sendable` | `ExerciseClassifier` |
+  | 3 documented exceptions | 1 documented `@unchecked Sendable` (teks lama) + 2 `nonisolated(unsafe)` | `ExerciseClassifier` · `CMSampleBuffer` · preview layer |
 - **Sitasi:** [13] WWDC24 "Migrate your app to Swift 6"
 - **Data:** ✅ `SWIFT_VERSION = 6.0`, iOS 17.2. Belum ada test target, jadi jangan klaim "unit-tested"; poin 1 sengaja berbunyi "can be tested".
   - 🟨 **Deck belum diubah:** ganti teks slide 11 di PowerPoint sesuai versi awam di atas (judul, subjudul, label lapisan dan jalur, 3 poin, chip, notes + tabel istilah).
-  - ⚠️ **Chip "1 documented exception"** hanya menghitung `@unchecked Sendable`. Kode juga punya 2 `nonisolated(unsafe)` yang terdokumentasi (`Belajar-FitRep.md` §9), dan keduanya juga melewati pemeriksaan compiler. Sebelum mengubah deck, pilih: "3 documented exceptions", "1 documented Sendable exception", atau teks lama "1 documented @unchecked Sendable".
+  - ✅ **Chip "3 documented exceptions"** (dipilih pemilik, 16 Okt 2026): 1 `@unchecked Sendable` (`ExerciseClassifier`) + 2 `nonisolated(unsafe)` (`CMSampleBuffer` yang dipakai sinkron di antrean yang sama, dan preview layer), semuanya diberi alasan di kode (`Belajar-FitRep.md` §9). Teks lama "1 documented @unchecked Sendable" hanya menghitung yang pertama.
   - Koreksi saat menerapkan draf: Analysis lane menyebut AI menebak **tiap 10 frame**, bukan tiap frame (Vision berjalan tiap frame; model Core ML tiap 10 frame, slide 10).
 
 ---
@@ -502,7 +502,10 @@ Slide ini menjawab: **"Bagaimana aplikasi memproses 30 gambar per detik tanpa ma
 
 ##### 5. Tiga label kecil (chip)
 - **Swift 6 safety checks on** *(dulu "Swift 6 language mode")*: pemeriksaan data race penuh aktif (`SWIFT_VERSION = 6.0`).
-- **1 documented exception** *(dulu "1 documented @unchecked Sendable")*: satu-satunya `@unchecked Sendable`, yaitu tempat kita bilang ke compiler "percaya saja, ini aman": `ExerciseClassifier`. Kelas model buatan Xcode belum ditandai aman, padahal propertinya tidak pernah berubah dan hanya dipanggil dari satu actor. Alasannya ditulis di kode. ⚠️ Kode juga punya 2 `nonisolated(unsafe)` yang terdokumentasi; label chip ini masih perlu diputuskan (lihat Data di atas).
+- **3 documented exceptions** *(dulu "1 documented @unchecked Sendable")*: tiga tempat kita bilang ke compiler "percaya saja, ini aman", masing-masing dengan alasan tertulis di kode:
+  - **1 `@unchecked Sendable`** di `ExerciseClassifier`: kelas model buatan Xcode belum ditandai aman, padahal propertinya tidak pernah berubah dan hanya dipanggil dari satu actor.
+  - **2 `nonisolated(unsafe)`**: `CMSampleBuffer` yang dipakai sinkron di antrean yang sama, dan preview layer.
+  - Bila ditanya *"why any exceptions?"*: ketiganya ada di batas dengan kode Apple yang belum ditandai aman untuk Swift 6, dan setiap pengecualian ditulis alasannya, bukan dibiarkan diam-diam.
 - **iOS 17.2+:** versi iOS minimum.
 
 ##### 6. Bila ditanya lebih dalam
@@ -738,7 +741,7 @@ Nomor global untuk **seluruh deck**, urut kemunculan pertama: FitRep memakai [1]
 - [ ] **Cocokkan tim dengan keynote 2024:** "Meet the Team" = 5 anggota + 1 mentor; peran pemilik "ML Modelling". Kalimat My Role sudah menjadi "ML & iOS Engineer"; meta "6 members" belum dicocokkan.
 - [x] **Samakan KPI testing accuracy:** semua slide kini 94% (sesuai Create ML, slide 15).
 - [ ] **Samakan rentang set/rep:** slide 6 "3–6 sets × 6–15 reps" vs kode (1–6 × 6–20, bawaan 3 × 12). Ikut sesuaikan thermal di kartu L3 slide 17 dan Lampiran B (6 × 15 → 6 × 20 bila mengikuti kode).
-- [ ] Terapkan versi awam slide 11 di PowerPoint (bagian 08), setelah memutuskan label chip "1 documented exception".
+- [ ] Terapkan versi awam slide 11 di PowerPoint (bagian 08), termasuk chip "3 documented exceptions".
 - [ ] Isi link TestFlight dan QR di slide 20 (lihat bagian 15).
 - [ ] Pastikan video YouTube berstatus Public/Unlisted.
 - [ ] Konfirmasi persona Chris, jumlah responden wawancara, dan izin menampilkan nama depan di slide 5.
@@ -759,7 +762,7 @@ Nomor global untuk **seluruh deck**, urut kemunculan pertama: FitRep memakai [1]
 - **Perbaikan dokumen (16 Okt 2026, deck tidak berubah):** "Apple tidak mempublikasikan/merilis" → "tidak mendokumentasikan" (bagian 06 dan Belajar). "Kebal"/"tidak terpengaruh" penampilan → "jauh kurang sensitif", karena deteksi pose Vision sendiri tetap bisa terpengaruh. Durasi 2,3–2,8 s kini disebut durasi klip kami, bukan durasi rep manusia pada umumnya. Belajar T-B6 diluruskan: model melihat klip diam (di Others); yang tidak pernah dilihatnya adalah window campuran diam + awal rep. Nomor "[1], [9]" di dua entri changelog di bawah → "[1], [10]". Catatan ketergantungan thermal 6 × 15 pada rentang set/rep (slide 17, Lampiran B, Lampiran E). Jawaban lisan untuk sumber campuran testing/validasi di slide 13 (naskah bagian 10 dan Belajar T-C2b).
 - **Slide 9, naskah (16 Okt 2026, deck tidak berubah):** sitasi [12] "WWDC24 Session 10159" → **10161** (sama dengan Lampiran D). Kalimat siap ucap: "ukuran data yang diproses" → "input classifier", dan "sangat hemat komputasi" dihapus, diganti catatan bahwa 51.000× adalah perbandingan jumlah angka, bukan hasil ukur beban komputasi (Vision tetap membaca gambar; beban diukur di L3). Kini sejalan dengan tabel "Bedah Angka".
 - **Slide 9, panduan poin 1 (16 Okt 2026, deck tidak berubah):** "Sangat Ringan & Efisien (Hemat Data)" → **"Input Jauh Lebih Ringkas"**; klaim video mentah "membebani memori dan menguras baterai iPhone" dihapus karena belum diukur, diganti nuansa jujur (dampak memori/baterai menunggu L3; Vision tetap membaca gambar).
-- **Slide 11 versi awam (16 Okt 2026, disetujui pemilik; deck belum diubah):** judul "Swift 6 Pipeline, Zero Per-Frame Hops" → **"30 Frames a Second, Without Freezing the Screen"**. Subjudul, label lapisan (Screens · Runner · Decider · Rules · Tools), tiga jalur (Camera · Analysis · Screen lane), tiga poin (One Place Decides · No Handoffs per Frame · Redraw Only on Change), chip, dan notes ditulis ulang dengan bahasa awam; tabel istilah teknis ditambahkan di bagian 08. Analysis lane menyebut AI menebak tiap 10 frame (bukan tiap frame). Label chip "1 documented exception" masih perlu diputuskan karena ada 2 `nonisolated(unsafe)`. Belajar §9 dan T-D4 ikut disesuaikan.
+- **Slide 11 versi awam (16 Okt 2026, disetujui pemilik; deck belum diubah):** judul "Swift 6 Pipeline, Zero Per-Frame Hops" → **"30 Frames a Second, Without Freezing the Screen"**. Subjudul, label lapisan (Screens · Runner · Decider · Rules · Tools), tiga jalur (Camera · Analysis · Screen lane), tiga poin (One Place Decides · No Handoffs per Frame · Redraw Only on Change), chip, dan notes ditulis ulang dengan bahasa awam; tabel istilah teknis ditambahkan di bagian 08. Analysis lane menyebut AI menebak tiap 10 frame (bukan tiap frame). Chip **"3 documented exceptions"** (1 `@unchecked Sendable` + 2 `nonisolated(unsafe)`, dipilih pemilik). Belajar §9 dan T-D4 ikut disesuaikan.
 - **Slide 10 kartu 1:** ditambah syarat mulai "A rep starts when the elbow bends below 140°." (kotak teks ditinggikan agar 5 baris muat). Durasi 1–6 s dihitung dari < 140° (mulai) sampai > 145° (selesai).
 - **Durasi rep minimum 0,8 s → 1 s (15 Okt 2026):** `minimumDuration = 1.0` di `RepetitionTracker.swift` (keputusan pemilik: rep secepat 0,8 s terlalu berisiko). Slide 10 kartu 1 kini "within 1–6 s"; notes, naskah, Belajar, PRD ikut. Rep < 1 s ditolak tanpa bunyi. Belum diuji di iPhone.
 - **Slide 10:** "Smooth out camera jitter" → **"Average the last 5 frames"**: yang dihaluskan adalah titik sendi hasil deteksi pose yang melompat antar-frame, bukan getaran kamera; kata baru langsung menyebut caranya.
